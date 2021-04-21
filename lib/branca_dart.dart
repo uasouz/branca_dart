@@ -37,8 +37,8 @@ class Branca {
     if (timestamp == null) {
       timestamp = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     }
-    var v = int32BigEndianBytes(timestamp);
-    Uint8List header = Uint8List.fromList([VERSION, ...v, ...nonce]);
+    var timestampBytes = int32BigEndianBytes(timestamp);
+    Uint8List header = Uint8List.fromList([VERSION, ...timestampBytes, ...nonce]);
 
     var ciphertext = Sodium.cryptoAeadXchacha20poly1305IetfEncrypt(
         Uint8List.fromList(payload.codeUnits), header, null, nonce, this.key);
