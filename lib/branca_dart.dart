@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_sodium/flutter_sodium.dart';
 import 'package:base_x/base_x.dart';
 
-const version = 0xBA;
+const VERSION = 0xBA;
 const NONCE_BYTES = 24;
 const HEADER_BYTES = 29;
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -36,8 +36,7 @@ class Branca {
       timestamp = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
     }
     var v = int32BigEndianBytes(timestamp);
-    Uint8List header = Uint8List.fromList(
-        [version, ...v, ...nonce]);
+    Uint8List header = Uint8List.fromList([VERSION, ...v, ...nonce]);
 
     var ciphertext = Sodium.cryptoAeadXchacha20poly1305IetfEncrypt(
         Uint8List.fromList(payload.codeUnits), header, null, nonce, this.key);
@@ -45,5 +44,26 @@ class Branca {
     Uint8List binary = Uint8List.fromList([...header, ...ciphertext]);
 
     return base62.encode(binary);
+  }
+
+  String decode(String data) {
+    if (data.length < 62) {}
+
+    Uint8List binary = base62.decode(data);
+    Uint8List header = binary.sublist(0, HEADER_BYTES);
+    Uint8List ciphertext = binary.sublist(HEADER_BYTES, binary.length);
+
+    int version = binary[0];
+
+    if (version != VERSION) {}
+
+    int timestamp =
+        ByteData.sublistView(header.sublist(1, 5)).getInt32(0, Endian.big);
+    Uint8List nonce = header.sublist(5, HEADER_BYTES);
+
+    var payload = Sodium.cryptoAeadXchacha20poly1305IetfDecrypt(
+        null, ciphertext, header, nonce, this.key);
+
+    return String.fromCharCodes(payload);
   }
 }
