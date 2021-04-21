@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter_sodium/flutter_sodium.dart';
 import 'package:base_x/base_x.dart';
 
+import 'exceptions.dart';
+
 const VERSION = 0xBA;
 const NONCE_BYTES = 24;
 const HEADER_BYTES = 29;
@@ -46,8 +48,10 @@ class Branca {
     return base62.encode(binary);
   }
 
-  String decode(String data) {
-    if (data.length < 62) {}
+  String decode(String data, {int ttl}) {
+    if (data.length < 62) {
+      throw InvalidLengthException();
+    }
 
     Uint8List binary = base62.decode(data);
     Uint8List header = binary.sublist(0, HEADER_BYTES);
@@ -55,7 +59,9 @@ class Branca {
 
     int version = binary[0];
 
-    if (version != VERSION) {}
+    if (version != VERSION) {
+      throw VersionException();
+    }
 
     int timestamp =
         ByteData.sublistView(header.sublist(1, 5)).getInt32(0, Endian.big);
@@ -63,6 +69,14 @@ class Branca {
 
     var payload = Sodium.cryptoAeadXchacha20poly1305IetfDecrypt(
         null, ciphertext, header, nonce, this.key);
+
+    if (ttl != null) {
+      int future = timestamp + ttl;
+      int now = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
+      if (future < now) {
+        throw TokenExpiredException();
+      }
+    }
 
     return String.fromCharCodes(payload);
   }
